@@ -1,41 +1,41 @@
-import { getProduct } from "@/lib/api";
-import { notFound } from "next/navigation";
 
-export default async function ProductDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+import Marquee from "@/components/Marquee";
+import Hero from "@/components/Hero";
+import ProductSections from "@/components/ProductSections";
+import { getProducts } from "@/lib/api";
+import type { Product } from "@/lib/types";
 
-  let response;
+export const revalidate = 300;
+
+export default async function HomePage() {
+  let products: Product[] = [];
+  let hasError = false;
 
   try {
-    response = await getProduct(id);
-  } catch {
-    notFound();
-  }
-
-  const product = response.data;
-
-  if (!product) {
-    notFound();
+    products = await getProducts();
+  } catch (error) {
+    console.error("Failed to load products:", error);
+    hasError = true;
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">
-          {product.name}
-        </h1>
+    <main className="min-h-screen bg-[#fdfcf7]">
+      <Marquee />
 
-        <p className="mt-4 text-gray-500">
-          আজকের দাম
-        </p>
+      <Hero />
 
-        <p className="mt-2 text-3xl font-bold text-green-700">
-          {product.price} টাকা
-        </p>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {hasError && (
+          <div
+            role="alert"
+            className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+          >
+            পণ্যের তথ্য লোড করা যায়নি। অনুগ্রহ করে
+            কিছুক্ষণ পর আবার চেষ্টা করুন।
+          </div>
+        )}
+
+        <ProductSections products={products} />
       </div>
     </main>
   );

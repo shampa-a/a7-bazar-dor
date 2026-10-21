@@ -1,29 +1,40 @@
-export type Product = {
-id: string | number;
-slug?: string;
-name: string;
-price: number;
-previousPrice?: number | null;
-unit?: string;
-emoji?: string;
-description?: string;
-category?: string;
-categoryName?: string;
-minPrice?: number;
-maxPrice?: number;
-averagePrice?: number;
-[key: string]: unknown;
-};
+export type PriceChangeDirection = "up" | "down" | "same";
 
-export type Category = {
-id?: string | number;
-slug?: string;
-name: string;
-icon?: string;
-};
+export interface ProductChange {
+  dir?: PriceChangeDirection;
+  percent?: number;
+  value?: number;
+  amount?: number;
+}
 
-export type ApiResponse<T> = {
-success?: boolean;
-message?: string;
-data: T;
-};
+export interface Product {
+  id: string | number;
+  slug?: string;
+  name?: string;
+  nameBn?: string;
+  description?: string;
+  category?: string;
+  categoryNameBn?: string;
+  categoryIcon?: string;
+  image?: string;
+  imageUrl?: string;
+  unit?: string;
+  price?: number;
+  today?: number;
+  yesterday?: number;
+  lastWeek?: number;
+  lastMonth?: number;
+  previousPrice?: number;
+  priceChange?: number;
+  priceChangeDir?: PriceChangeDirection;
+  change?: ProductChange;
+}
+
+export interface Category {
+  id?: string | number;
+  slug?: string;
+  name?: string;
+  nameBn?: string;
+  icon?: string;
+  categoryIcon?: string;
+}

@@ -1,97 +1,153 @@
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 
-type ProductCardProps = {
-product: Product;
-};
-
-export function formatPrice(value: number): string {
-return new Intl.NumberFormat("bn-BD", {
-maximumFractionDigits: 2,
-}).format(Number.isFinite(value) ? value : 0);
-}
-
-// IMPORTANT: Export this function so other components can import it.
 export function getPriceChange(product: Product): number {
-const currentPrice = Number(product.price);
-const previousPrice = Number(product.previousPrice);
+  if (typeof product.change?.percent === "number") {
+    return product.change.percent;
+  }
 
-if (
-product.previousPrice == null ||
-!Number.isFinite(currentPrice) ||
-!Number.isFinite(previousPrice) ||
-previousPrice <= 0
-) {
-return 0;
+  if (typeof product.priceChange === "number") {
+    return product.priceChange;
+  }
+
+  const today = Number(product.today ?? product.price);
+  const yesterday = Number(
+    product.yesterday ?? product.previousPrice
+  );
+
+  if (
+    !Number.isFinite(today) ||
+    !Number.isFinite(yesterday) ||
+    yesterday <= 0
+  ) {
+    return 0;
+  }
+
+  return ((today - yesterday) / yesterday) * 100;
 }
 
-return (
-((currentPrice - previousPrice) / previousPrice) * 100
-);
+export function getPriceDirection(
+  product: Product
+): "up" | "down" | "same" {
+  const direction =
+    product.priceChangeDir ?? product.change?.dir;
+
+  if (
+    direction === "up" ||
+    direction === "down" ||
+    direction === "same"
+  ) {
+    return direction;
+  }
+
+  const change = getPriceChange(product);
+
+  if (change > 0) return "up";
+  if (change < 0) return "down";
+  return "same";
+}
+
+export function formatBengaliNumber(value: number): string {
+  return new Intl.NumberFormat("bn-BD", {
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function getUnitLabel(unit?: string): string {
+  const units: Record<string, string> = {
+    kg: "প্রতি কেজি",
+    kilogram: "প্রতি কেজি",
+    g: "প্রতি গ্রাম",
+    gram: "প্রতি গ্রাম",
+    liter: "প্রতি লিটার",
+    litre: "প্রতি লিটার",
+    l: "প্রতি লিটার",
+    ml: "প্রতি মিলিলিটার",
+    piece: "প্রতি পিস",
+    pcs: "প্রতি পিস",
+    pc: "প্রতি পিস",
+    dozen: "প্রতি ডজন",
+    packet: "প্রতি প্যাকেট",
+    bag: "প্রতি বস্তা",
+  };
+
+  if (!unit) return "প্রতি একক";
+
+  return units[unit.toLowerCase()] ?? `প্রতি ${unit}`;
+}
+
+interface ProductCardProps {
+  product: Product;
 }
 
 export default function ProductCard({
-product,
+  product,
 }: ProductCardProps) {
-const change = getPriceChange(product);
+  const price = Number(product.today ?? product.price ?? 0);
+  const change = getPriceChange(product);
+  const direction = getPriceDirection(product);
 
-const badgeClass =
-change > 0
-? "bg-green-100 text-green-700"
-: change < 0
-? "bg-red-100 text-red-700"
-: "bg-gray-100 text-gray-600";
+  const name =
+    product.nameBn ?? product.name ?? "অজানা পণ্য";
 
-const arrow =
-change > 0 ? "▲" : change < 0 ? "▼" : "—";
+  const href = `/product/${encodeURIComponent(
+    product.slug ?? String(product.id)
+  )}`;
 
-return (
-<Link
-href={`/product/${encodeURIComponent(
-        product.slug || String(product.id)
-      )}`}
-className="group block rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-green-400 hover:shadow-lg sm:p-5"
-> <div className="flex items-start justify-between gap-3"> <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-50 text-4xl">
-{product.emoji || "🛒"} </div>
-    <span
-      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${badgeClass}`}
+  const badgeStyles = {
+    up: "bg-green-100 text-green-700",
+    down: "bg-red-100 text-red-700",
+    same: "bg-gray-100 text-gray-600",
+  };
+
+  const badgeText = {
+    up: "▲",
+    down: "▼",
+    same: "—",
+  };
+
+  return (
+    <Link
+      href={href}
+      className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-4 transition hover:-translate-y-1 hover:border-green-300 hover:shadow-lg sm:p-5"
+      aria-label={`${name} এর বিস্তারিত দেখুন`}
     >
-      {arrow} {formatPrice(Math.abs(change))}%
-    </span>
-  </div>
-  <h3 className="mt-4 line-clamp-2 min-h-12 text-lg font-bold text-gray-800 group-hover:text-green-700">
-    {product.name}
-  </h3>
+      <div className="mb-4 flex h-24 items-center justify-center rounded-xl bg-[#f5f8ef] text-5xl sm:h-28">
+        {product.image &&
+        /^https?:\/\//i.test(product.image) ? (
+          <span className="text-sm text-gray-500">
+            পণ্যের ছবি
+          </span>
+        ) : (
+          product.image ?? product.categoryIcon ?? "🛒"
+        )}
+      </div>
 
-<p className="mt-1 text-sm text-gray-500">
-    {product.unit || "প্রতি কেজি"}
-  </p>
+      <h3 className="text-base font-bold text-gray-800 group-hover:text-green-700 sm:text-lg">
+        {name}
+      </h3>
 
-  <div className="mt-4 border-t border-gray-100 pt-3">
-    <p className="text-sm text-gray-500">আজকের দাম</p>
+      <p className="mt-1 text-sm text-gray-500">
+        {getUnitLabel(product.unit)}
+      </p>
 
-    <p className="mt-1 text-2xl font-bold text-gray-900">
-      {formatPrice(product.price)}{" "}
-      <span className="text-sm font-medium text-gray-600">
-        টাকা
-      </span>
-    </p>
-  </div>
+      <div className="mt-auto flex flex-wrap items-end justify-between gap-2 pt-4">
+        <div>
+          <p className="text-xs text-gray-500">
+            আজকের দাম
+          </p>
+          <p className="mt-1 text-lg font-bold text-gray-900">
+            {formatBengaliNumber(price)} টাকা
+          </p>
+        </div>
 
-  <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-    <span className="text-sm font-medium text-green-700">
-      বিস্তারিত দেখুন
-    </span>
-
-    <span
-      aria-hidden="true"
-      className="text-lg text-green-600 transition-transform group-hover:translate-x-1"
-    >
-      
-    </span>
-  </div>
-</Link>
-
-
-);
+        <span
+          className={`rounded-full px-2 py-1 text-xs font-semibold ${badgeStyles[direction]}`}
+        >
+          {badgeText[direction]}{" "}
+          {formatBengaliNumber(Math.abs(change))}%
+        </span>
+      </div>
+    </Link>
+  );
 }
