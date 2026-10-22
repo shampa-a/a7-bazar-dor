@@ -1,113 +1,110 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
 
-type SocialProvider = "google" | "github";
-
-export default function SignUpPage() {
+const SignUp = () => {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] =
-    useState<SocialProvider | "">("");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const [socialLoading, setSocialLoading] = useState<
+    "google" | "github" | null
+  >(null);
 
-    if (!name.trim() || !email.trim() || !password) {
-      toast.error("সবগুলো ঘর পূরণ করুন।");
-      return;
-    }
-
-    if (password.length < 8) {
-      toast.error("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।");
-      return;
-    }
-
+  // Email and password signup
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await authClient.signUp.email({
-        name: name.trim(),
-        email: email.trim(),
+      const { data, error } = await authClient.signUp.email({
+        name,
+        email,
         password,
+        callbackURL: "/",
       });
 
       if (error) {
-        toast.error(error.message || "সাইন আপ করা যায়নি।");
+        toast.error(error.message || "সাইন আপ করা যায়নি");
+        console.error("Sign up error:", error);
         return;
       }
 
-      toast.success("অ্যাকাউন্ট তৈরি হয়েছে!");
-
-      router.push("/signin");
-      router.refresh();
-    } catch {
+      if (data) {
+        toast.success("সাইন আপ সফল হয়েছে!");
+        router.push("/");
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("Unexpected sign up error:", err);
       toast.error("একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleSocialLogin(provider: SocialProvider) {
+  // Google and GitHub signup
+  const handleSocialSignUp = async (
+    provider: "google" | "github"
+  ) => {
     setSocialLoading(provider);
 
     try {
       const { error } = await authClient.signIn.social({
         provider,
         callbackURL: "/",
+        errorCallbackURL: "/signup",
+        newUserCallbackURL: "/",
       });
 
       if (error) {
         toast.error(
-          error.message || "সোশ্যাল সাইন আপ ব্যর্থ হয়েছে।",
+          error.message || "সোশ্যাল সাইন আপ করা যায়নি"
         );
-        setSocialLoading("");
+        setSocialLoading(null);
       }
-    } catch {
-      toast.error("সোশ্যাল লগইন করা যায়নি।");
-      setSocialLoading("");
+    } catch (err) {
+      console.error(`${provider} signup error:`, err);
+      toast.error("একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      setSocialLoading(null);
     }
-  }
-
-  const isBusy = loading || Boolean(socialLoading);
+  };
 
   return (
-    <main className="flex min-h-[80vh] items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 shadow-lg sm:p-9">
-        {/* Logo and introduction */}
-        <Link href="/" className="block text-center">
-          <span className="text-5xl" aria-hidden="true">
-            🛒
-          </span>
+    <div className="flex min-h-[75vh] items-center justify-center bg-base-100 px-4 py-10">
+      <div className="w-full max-w-md rounded-2xl border border-base-300 bg-base-200 p-6 shadow-lg sm:p-8">
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <Link
+            href="/"
+            className="text-2xl font-bold text-green-700"
+          >
+            🛒 বাজার দর
+          </Link>
 
-          <h1 className="mt-3 text-3xl font-extrabold text-green-800">
-            বাজার দর
+          <h1 className="mt-4 text-2xl font-bold">
+            নতুন অ্যাকাউন্ট তৈরি করুন
           </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
-            নতুন অ্যাকাউন্ট তৈরি করুন
+          <p className="mt-2 text-sm text-base-content/70">
+            বাজার দর-এ যোগ দিতে আপনার তথ্য পূরণ করুন।
           </p>
-        </Link>
+        </div>
 
-        <h2 className="mb-6 mt-8 text-xl font-bold text-gray-900">
-          সাইন আপ
-        </h2>
-
-        {/* Registration form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Email signup form */}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Name */}
           <div>
-            <label
-              htmlFor="name"
-              className="mb-2 block text-sm font-semibold text-gray-700"
-            >
+            <label htmlFor="name" className="label mb-1">
               আপনার নাম
             </label>
 
@@ -115,43 +112,37 @@ export default function SignUpPage() {
               id="name"
               name="name"
               type="text"
-              autoComplete="name"
-              placeholder="আপনার পুরো নাম"
+              className="input w-full"
+              placeholder="আপনার নাম লিখুন"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
               required
-              disabled={isBusy}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
             />
           </div>
 
+          {/* Email */}
           <div>
-            <label
-              htmlFor="email"
-              className="mb-2 block text-sm font-semibold text-gray-700"
-            >
-              ইমেইল ঠিকানা
+            <label htmlFor="email" className="label mb-1">
+              ইমেইল
             </label>
 
             <input
               id="email"
               name="email"
               type="email"
-              autoComplete="email"
-              placeholder="name@example.com"
+              className="input w-full"
+              placeholder="আপনার ইমেইল লিখুন"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
-              disabled={isBusy}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
             />
           </div>
 
+          {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-semibold text-gray-700"
-            >
+            <label htmlFor="password" className="label mb-1">
               পাসওয়ার্ড
             </label>
 
@@ -159,89 +150,121 @@ export default function SignUpPage() {
               id="password"
               name="password"
               type="password"
-              autoComplete="new-password"
-              minLength={8}
+              className="input w-full"
               placeholder="কমপক্ষে ৮ অক্ষর"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
               required
-              disabled={isBusy}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
             />
           </div>
 
+          {/* Email signup button */}
           <button
             type="submit"
-            disabled={isBusy}
-            className="w-full rounded-xl bg-green-700 px-4 py-3 font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={loading || socialLoading !== null}
+            className="btn mt-3 w-full border-0 bg-green-600 text-white hover:bg-green-700"
           >
-            {loading
-              ? "অ্যাকাউন্ট তৈরি হচ্ছে..."
-              : "অ্যাকাউন্ট তৈরি করুন"}
+            {loading ? (
+              <>
+                <span className="loading loading-spinner loading-sm" />
+                অ্যাকাউন্ট তৈরি হচ্ছে...
+              </>
+            ) : (
+              "ইমেইল দিয়ে সাইন আপ"
+            )}
           </button>
         </form>
 
         {/* Divider */}
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-gray-200" />
+        <div className="divider my-5">অথবা</div>
 
-          <span className="text-sm text-gray-500">অথবা</span>
+        {/* Google signup */}
+        <button
+          type="button"
+          onClick={() => handleSocialSignUp("google")}
+          disabled={loading || socialLoading !== null}
+          className="btn btn-outline w-full"
+        >
+          {socialLoading === "google" ? (
+            <span className="loading loading-spinner loading-sm" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 48 48"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path
+                fill="#EA4335"
+                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.03 13.22l7.98 6.19C11.9 13.72 17.5 9.5 24 9.5Z"
+              />
+              <path
+                fill="#4285F4"
+                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.42 37.95 46.98 31.83 46.98 24.55Z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M10.02 28.59A14.4 14.4 0 0 1 9.25 24c0-1.6.27-3.15.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.46-6.19Z"
+              />
+              <path
+                fill="#34A853"
+                d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.14 1.45-4.89 2.3-8.18 2.3-6.5 0-12.1-4.22-14-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"
+              />
+            </svg>
+          )}
 
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+          Google দিয়ে সাইন আপ
+        </button>
 
-        {/* Google and GitHub registration */}
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => handleSocialLogin("google")}
-            disabled={isBusy}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <span className="text-lg font-bold" aria-hidden="true">
-              G
-            </span>
+        {/* GitHub signup */}
+        <button
+          type="button"
+          onClick={() => handleSocialSignUp("github")}
+          disabled={loading || socialLoading !== null}
+          className="btn btn-neutral mt-3 w-full"
+        >
+          {socialLoading === "github" ? (
+            <span className="loading loading-spinner loading-sm" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.08c-3.1.68-3.76-1.32-3.76-1.32-.5-1.29-1.24-1.63-1.24-1.63-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 1.72 2.62 1.22 3.26.93.1-.73.39-1.22.71-1.5-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.16-3-.12-.28-.5-1.42.11-2.96 0 0 .95-.3 3.05 1.15a10.6 10.6 0 0 1 5.55 0c2.11-1.45 3.05-1.15 3.05-1.15.61 1.54.23 2.68.12 2.96.72.78 1.15 1.78 1.15 3.01 0 4.29-2.62 5.24-5.12 5.52.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z" />
+            </svg>
+          )}
 
-            {socialLoading === "google"
-              ? "Google-এ সংযোগ হচ্ছে..."
-              : "Google দিয়ে সাইন আপ করুন"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSocialLogin("github")}
-            disabled={isBusy}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <span className="text-lg font-bold" aria-hidden="true">
-              GH
-            </span>
-
-            {socialLoading === "github"
-              ? "GitHub-এ সংযোগ হচ্ছে..."
-              : "GitHub দিয়ে সাইন আপ করুন"}
-          </button>
-        </div>
+          GitHub দিয়ে সাইন আপ
+        </button>
 
         {/* Sign in link */}
-        <p className="mt-7 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm">
           আগে থেকেই অ্যাকাউন্ট আছে?{" "}
           <Link
             href="/signin"
-            className="font-bold text-green-700 hover:underline"
+            className="font-semibold text-green-700 hover:underline"
           >
             সাইন ইন করুন
           </Link>
         </p>
 
-        {/* Home page link */}
-        <Link
-          href="/"
-          className="mt-5 block text-center text-sm text-gray-500 hover:text-green-700"
-        >
-          ← হোম পেজে ফিরে যান
-        </Link>
+        {/* Back to home */}
+        <p className="mt-3 text-center text-sm">
+          <Link
+            href="/"
+            className="text-base-content/70 hover:text-green-700"
+          >
+            ← হোমপেজে ফিরে যান
+          </Link>
+        </p>
       </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default SignUp;

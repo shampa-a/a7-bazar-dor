@@ -8,26 +8,26 @@ export interface ProductChange {
 }
 
 export interface Product {
-  id: string | number;
+  id: number | string;
   slug?: string;
-  name?: string;
   nameBn?: string;
-  description?: string;
+  name?: string;
   category?: string;
   categoryNameBn?: string;
   categoryIcon?: string;
-  image?: string;
-  imageUrl?: string;
   unit?: string;
-  price?: number;
+  image?: string;
   today?: number;
   yesterday?: number;
   lastWeek?: number;
   lastMonth?: number;
+  price?: number;
   previousPrice?: number;
   priceChange?: number;
-  priceChangeDir?: PriceChangeDirection;
-  change?: ProductChange;
+  priceChangeDir?: "up" | "down" | "same";
+  change?: {
+    dir?: "up" | "down" | "same";
+  };
 }
 
 export interface Category {
