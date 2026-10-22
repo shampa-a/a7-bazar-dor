@@ -1,40 +1,52 @@
-export type PriceChangeDirection = "up" | "down" | "same";
+export type Direction = "up" | "down" | "same";
 
-export interface ProductChange {
-  dir?: PriceChangeDirection;
-  percent?: number;
-  value?: number;
-  amount?: number;
-}
-
+/** Raw shape returned by the API. Every field may be missing or duplicated. */
 export interface Product {
-  id: number | string;
+  id: string | number;
   slug?: string;
-  nameBn?: string;
+
   name?: string;
+  nameBn?: string;
+
   category?: string;
   categoryNameBn?: string;
   categoryIcon?: string;
-  unit?: string;
+
   image?: string;
+  imageUrl?: string;
+  unit?: string;
+
+  price?: number;
   today?: number;
   yesterday?: number;
   lastWeek?: number;
   lastMonth?: number;
-  price?: number;
   previousPrice?: number;
+
+  /** Absolute change in taka (not a percent). */
   priceChange?: number;
-  priceChangeDir?: "up" | "down" | "same";
+  priceChangeDir?: Direction;
+
   change?: {
-    dir?: "up" | "down" | "same";
+    dir?: Direction;
+    /** Unsigned percent; direction comes from `dir`. */
+    percent?: number;
   };
 }
 
-export interface Category {
-  id?: string | number;
-  slug?: string;
-  name?: string;
-  nameBn?: string;
-  icon?: string;
-  categoryIcon?: string;
+/** Clean shape the UI reads. Built once by `normalizeProduct`. */
+export interface NormalizedProduct {
+  id: string | number;
+  /** Always a string, safe for `/product/${slug}`. */
+  slug: string;
+  name: string;
+  category?: string;
+  /** Emoji, or an image URL / path. */
+  visual: string;
+  unit?: string;
+  today: number | null;
+  yesterday: number | null;
+  /** Signed percent: positive = rose, negative = fell. */
+  changePercent: number;
+  direction: Direction;
 }
